@@ -34,6 +34,7 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
     public func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         QueueDatabaseEntry(jobId: job.id,
                            jobName: job.jobName,
+                           queueName: job.queueName,
                            payload: Data(job.payload),
                            maxRetryCount: job.maxRetryCount,
                            delayUntil: job.delayUntil,

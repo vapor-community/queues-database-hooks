@@ -18,6 +18,10 @@ public final class QueueDatabaseEntry: Model {
     @Field(key: "jobName")
     public var jobName: String
 
+    /// The queue the job was run on
+    @Field(key: "queueName")
+    public var queueName: String
+
     /// The data associated with the job
     @Field(key: "payload")
     public var payload: Data
@@ -75,6 +79,7 @@ public final class QueueDatabaseEntry: Model {
 
     public init(jobId: String,
                 jobName: String,
+                queueName: String,
                 payload: Data,
                 maxRetryCount: Int,
                 delayUntil: Date?,
@@ -86,6 +91,7 @@ public final class QueueDatabaseEntry: Model {
     ) {
         self.jobId = jobId
         self.jobName = jobName
+        self.queueName = queueName
         self.payload = payload
         self.maxRetryCount = maxRetryCount
         self.delayUntil = delayUntil
@@ -106,6 +112,7 @@ public struct QueueDatabaseEntryMigration: Migration {
             .field(.id, .uuid, .identifier(auto: false))
             .field("jobId", .string, .required)
             .field("jobName", .string, .required)
+            .field("queueName", .string, .required)
             .field("payload", .json, .required)
             .field("maxRetryCount", .int, .required)
             .field("delayUntil", .datetime)
