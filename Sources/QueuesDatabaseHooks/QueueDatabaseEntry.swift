@@ -59,7 +59,7 @@ public final class QueueDatabaseEntry: Model {
 
 public struct QueueDatabaseEntryMigration: Migration {
     public init() { }
-    
+
     public func prepare(on database: Database) -> EventLoopFuture<Void> {
         database.schema(QueueDatabaseEntry.schema)
             .field(.id, .uuid, .identifier(auto: false))
@@ -67,7 +67,7 @@ public struct QueueDatabaseEntryMigration: Migration {
             .field("payload", .json, .required)
             .field("maxRetryCount", .int, .required)
             .field("delayUntil", .date)
-            .field("queuedAt", .data, .required)
+            .field("queuedAt", .date, .required)
             .field("errorString", .string)
             .field("created_at", .datetime)
             .field("updated_at", .datetime)
