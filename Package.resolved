@@ -42,7 +42,7 @@
         "repositoryURL": "https://github.com/vapor/queues.git",
         "state": {
           "branch": "hooks",
-          "revision": "ffb2e9d8f5e2d6298dc402dfcea8501722534ecf",
+          "revision": "c6414f1baced588ae27e6d2647f5e8361bcf7d93",
           "version": null
         }
       },

@@ -27,34 +27,46 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
         self.closure = closure
     }
 
-    /// Called when successfully dequeuing a job
+
+    /// Called when the job is first dispatched
     /// - Parameters:
-    ///   - job: The `NotificationJobData`
-    ///   - eventLoop: The `EventLoop` that can be used to run operations
-    /// - Returns: `Void` indicating completion
-    public func success(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    ///   - job: The `JobData` associated with the job
+    ///   - eventLoop: The eventLoop
+    public func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         QueueDatabaseEntry(jobId: job.id,
                            jobName: job.jobName,
                            payload: Data(),
                            maxRetryCount: job.maxRetryCount,
                            delayUntil: job.delayUntil,
                            queuedAt: job.queuedAt,
-                           errorString: nil).save(on: database)
+                           errorString: nil,
+                           status: .dispatched).save(on: database)
     }
 
-    /// Called when dequeing a job returns an error
+
+    /// Called when the job succeeds
     /// - Parameters:
-    ///   - job: The `NotificationJobData`
-    ///   - error: The `Error` that was passed through. Will get passed into the `closure` to transform it to a string
-    ///   - eventLoop: The `EventLoop` that can be used to run operations
-    /// - Returns: `Void` indicating completion
-    public func error(job: NotificationJobData, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        QueueDatabaseEntry(jobId: job.id,
-                           jobName: job.jobName,
-                           payload: Data(),
-                           maxRetryCount: job.maxRetryCount,
-                           delayUntil: job.delayUntil,
-                           queuedAt: job.queuedAt,
-                           errorString: closure(error)).save(on: database)
+    ///   - jobId: The id of the Job
+    ///   - eventLoop: The eventLoop
+    public func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        QueueDatabaseEntry
+            .query(on: database)
+            .filter(\.$jobId == jobId)
+            .set(\.$status, to: .success)
+            .update()
+    }
+
+    /// Called when the job returns an error
+    /// - Parameters:
+    ///   - jobId: The id of the Job
+    ///   - error: The error that caused the job to fail
+    ///   - eventLoop: The eventLoop
+    public func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        QueueDatabaseEntry
+            .query(on: database)
+            .filter(\.$jobId == jobId)
+            .set(\.$status, to: .error)
+            .set(\.$errorString, to: closure(error))
+            .update()
     }
 }

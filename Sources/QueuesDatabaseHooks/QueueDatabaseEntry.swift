@@ -2,6 +2,8 @@ import Foundation
 import FluentKit
 
 /// Stores information about a `Queue` job
+/// A record gets added when the job is dispatched and then updated with its status when
+/// it succeeds or fails
 public final class QueueDatabaseEntry: Model {
     public static let schema = "_queue_job_completions"
 
@@ -36,15 +38,33 @@ public final class QueueDatabaseEntry: Model {
     @Field(key: "errorString")
     public var errorString: String?
 
+    /// The status of the job
+    @Field(key: "status")
+    public var status: Status
+
     @Timestamp(key: "created_at", on: .create)
     public var createdAt: Date?
 
     @Timestamp(key: "updated_at", on: .update)
     public var updatedAt: Date?
 
+    public enum Status: Int, Codable {
+        case dispatched
+        case success
+        case error
+    }
+
     public init() { }
 
-    public init(jobId: String, jobName: String, payload: Data, maxRetryCount: Int, delayUntil: Date?, queuedAt: Date, errorString: String?) {
+    public init(jobId: String,
+                jobName: String,
+                payload: Data,
+                maxRetryCount: Int,
+                delayUntil: Date?,
+                queuedAt: Date,
+                errorString: String?,
+                status: Status)
+    {
         self.jobId = jobId
         self.jobName = jobName
         self.payload = payload
@@ -52,6 +72,7 @@ public final class QueueDatabaseEntry: Model {
         self.delayUntil = delayUntil
         self.queuedAt = queuedAt
         self.errorString = errorString
+        self.status = status
         self.createdAt = nil
         self.updatedAt = nil
     }
@@ -64,11 +85,13 @@ public struct QueueDatabaseEntryMigration: Migration {
         database.schema(QueueDatabaseEntry.schema)
             .field(.id, .uuid, .identifier(auto: false))
             .field("jobId", .string, .required)
+            .field("jobName", .string, .required)
             .field("payload", .json, .required)
             .field("maxRetryCount", .int, .required)
             .field("delayUntil", .date)
             .field("queuedAt", .date, .required)
             .field("errorString", .string)
+            .field("status", .int8)
             .field("created_at", .datetime)
             .field("updated_at", .datetime)
             .create()
