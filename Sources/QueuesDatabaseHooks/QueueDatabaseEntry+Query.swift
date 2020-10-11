@@ -50,14 +50,14 @@ public extension QueueDatabaseEntry {
 
         let query: SQLQueryString = """
         SELECT
-            count(*) as "completedJobs",
-            sum(
+            COUNT(*) as "completedJobs",
+            COALESCE(SUM(
                 CASE status
                 WHEN 2 THEN
                     1
                 ELSE
                     0
-                END) / count(*) as "percentSuccess"
+                END) / count(*), 1) as "percentSuccess"
         FROM
             _queue_job_completions
         WHERE
