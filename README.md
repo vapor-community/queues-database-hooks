@@ -5,8 +5,8 @@
 This package adds database success and failure tracking for all dequeued jobs. Getting started is easy:
 
 ```swift
-app.migrations.add(QueueDatabaseEntry())
-app.queues.add(QueuesDatabaseNotificationHook(db: app.db))
+app.migrations.add(QueueDatabaseEntryMigration())
+app.queues.add(QueuesDatabaseNotificationHook.default(db: app.db))
 ```
 
 And that's all! Your app will now start tracking job data in your specified database.

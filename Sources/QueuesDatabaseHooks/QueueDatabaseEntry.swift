@@ -58,6 +58,8 @@ public final class QueueDatabaseEntry: Model {
 }
 
 public struct QueueDatabaseEntryMigration: Migration {
+    public init() { }
+    
     public func prepare(on database: Database) -> EventLoopFuture<Void> {
         database.schema(QueueDatabaseEntry.schema)
             .field(.id, .uuid, .identifier(auto: false))
