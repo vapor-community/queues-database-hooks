@@ -1,5 +1,7 @@
 # QueuesDatabaseHooks
 
+**Note:** This is experimental and based on https://github.com/vapor/queues/pull/87. This package is part 2 out of 3 of a series of product improvements to Queues.
+
 This package adds database success and failure tracking for all dequeued jobs. Getting started is easy:
 
 ```swift
