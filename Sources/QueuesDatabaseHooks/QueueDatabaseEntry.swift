@@ -42,10 +42,14 @@ public final class QueueDatabaseEntry: Model {
     @Field(key: "status")
     public var status: Status
 
-    @Timestamp(key: "created_at", on: .create)
+    /// The date the job was completed
+    @Field(key: "completedAt")
+    public var completedAt: Date?
+
+    @Timestamp(key: "createdAt", on: .create)
     public var createdAt: Date?
 
-    @Timestamp(key: "updated_at", on: .update)
+    @Timestamp(key: "updatedAt", on: .update)
     public var updatedAt: Date?
 
     public enum Status: Int, Codable {
@@ -63,7 +67,8 @@ public final class QueueDatabaseEntry: Model {
                 delayUntil: Date?,
                 queuedAt: Date,
                 errorString: String?,
-                status: Status)
+                status: Status,
+                completedAt: Date?)
     {
         self.jobId = jobId
         self.jobName = jobName
@@ -73,6 +78,7 @@ public final class QueueDatabaseEntry: Model {
         self.queuedAt = queuedAt
         self.errorString = errorString
         self.status = status
+        self.completedAt = completedAt
         self.createdAt = nil
         self.updatedAt = nil
     }
@@ -92,8 +98,9 @@ public struct QueueDatabaseEntryMigration: Migration {
             .field("queuedAt", .datetime, .required)
             .field("errorString", .string)
             .field("status", .int8)
-            .field("created_at", .datetime)
-            .field("updated_at", .datetime)
+            .field("completedAt", .datetime)
+            .field("createdAt", .datetime)
+            .field("updatedAt", .datetime)
             .create()
     }
 

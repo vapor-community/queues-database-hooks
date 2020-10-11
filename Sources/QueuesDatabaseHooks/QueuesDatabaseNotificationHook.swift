@@ -40,7 +40,8 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
                            delayUntil: job.delayUntil,
                            queuedAt: job.queuedAt,
                            errorString: nil,
-                           status: .dispatched).save(on: database)
+                           status: .dispatched,
+                           completedAt: nil).save(on: database)
     }
 
 
@@ -53,6 +54,7 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
             .query(on: database)
             .filter(\.$jobId == jobId)
             .set(\.$status, to: .success)
+            .set(\.$completedAt, to: Date())
             .update()
     }
 
@@ -67,6 +69,7 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
             .filter(\.$jobId == jobId)
             .set(\.$status, to: .error)
             .set(\.$errorString, to: closure(error))
+            .set(\.$completedAt, to: Date())
             .update()
     }
 }
