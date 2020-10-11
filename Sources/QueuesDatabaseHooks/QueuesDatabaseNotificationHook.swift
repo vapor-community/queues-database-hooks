@@ -3,12 +3,12 @@ import Queues
 import FluentKit
 
 /// A `NotificationHook` that can be added to the queues package to track the status of all successful and failed jobs
-public struct QueuesDatabaseNotificationHook: NotificationHook {
+public struct QueuesDatabaseNotificationHook: JobEventDelegate {
     /// Error-transformation closure.
     private let errorClosure: (Error) -> (String)
 
     /// Payload-transformation closure.
-    private let payloadClosure: (NotificationJobData) -> (NotificationJobData)
+    private let payloadClosure: (JobEventData) -> (JobEventData)
 
     /// The database to run the queries on
     public let database: Database
@@ -18,7 +18,7 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
     public static func `default`(db: Database) -> QueuesDatabaseNotificationHook {
         return .init(db: db) { error -> (String) in
             return error.localizedDescription
-        } payloadClosure: { data -> (NotificationJobData) in
+        } payloadClosure: { data -> (JobEventData) in
             return data
         }
     }
@@ -27,7 +27,7 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
     ///
     /// - parameters:
     ///     - closure: Error-transformation closure. Converts `Error` to `String`.
-    public init(db: Database, errorClosure: @escaping (Error) -> (String), payloadClosure: @escaping (NotificationJobData) -> (NotificationJobData)) {
+    public init(db: Database, errorClosure: @escaping (Error) -> (String), payloadClosure: @escaping (JobEventData) -> (JobEventData)) {
         self.database = db
         self.errorClosure = errorClosure
         self.payloadClosure = payloadClosure
@@ -37,7 +37,7 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
     /// - Parameters:
     ///   - job: The `JobData` associated with the job
     ///   - eventLoop: The eventLoop
-    public func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         let data = payloadClosure(job)
         return QueueDatabaseEntry(jobId: data.id,
                                   jobName: data.jobName,
@@ -56,7 +56,7 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
     /// - Parameters:
     ///   - jobId: The id of the Job
     ///   - eventLoop: The eventLoop
-    public func dequeued(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         QueueDatabaseEntry
             .query(on: database)
             .filter(\.$jobId == jobId)

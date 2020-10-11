@@ -12,7 +12,7 @@ let package = Package(
             targets: ["QueuesDatabaseHooks"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/queues.git", .branch("hooks")),
+        .package(url: "https://github.com/vapor/queues.git", from: "1.5.0"),
         .package(url: "https://github.com/vapor/fluent-kit.git", from: "1.7.0"),
         .package(url: "https://github.com/vapor/sql-kit.git", from: "3.7.0")
     ],
