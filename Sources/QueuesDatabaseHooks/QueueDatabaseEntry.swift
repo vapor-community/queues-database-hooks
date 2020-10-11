@@ -2,8 +2,8 @@ import Foundation
 import FluentKit
 
 /// Stores information about a `Queue` job
-/// A record gets added when the job is dispatched and then updated with its status when
-/// it succeeds or fails
+/// A record gets added when the job is dispatched
+/// and then updated with its status when it succeeds or fails
 public final class QueueDatabaseEntry: Model {
     public static let schema = "_queue_job_completions"
 
@@ -34,17 +34,21 @@ public final class QueueDatabaseEntry: Model {
     @Field(key: "queuedAt")
     public var queuedAt: Date
 
+    /// The date the job was dequeued at
+    @OptionalField(key: "dequeuedAt")
+    public var dequeuedAt: Date?
+
+    /// The date the job was completed
+    @OptionalField(key: "completedAt")
+    public var completedAt: Date?
+
     /// The error string for the job
-    @Field(key: "errorString")
+    @OptionalField(key: "errorString")
     public var errorString: String?
 
     /// The status of the job
     @Field(key: "status")
     public var status: Status
-
-    /// The date the job was completed
-    @Field(key: "completedAt")
-    public var completedAt: Date?
 
     @Timestamp(key: "createdAt", on: .create)
     public var createdAt: Date?
@@ -52,9 +56,18 @@ public final class QueueDatabaseEntry: Model {
     @Timestamp(key: "updatedAt", on: .update)
     public var updatedAt: Date?
 
+    /// The status of the queue job
     public enum Status: Int, Codable {
-        case dispatched
+        /// The job has been queued but not yet picked up for processing
+        case queued
+
+        /// The job has been moved ot the processing queue and is currently running
+        case running
+
+        /// The job has finished and it was successful
         case success
+
+        /// The job has finished and it returned an error
         case error
     }
 
@@ -66,10 +79,11 @@ public final class QueueDatabaseEntry: Model {
                 maxRetryCount: Int,
                 delayUntil: Date?,
                 queuedAt: Date,
+                dequeuedAt: Date?,
+                completedAt: Date?,
                 errorString: String?,
-                status: Status,
-                completedAt: Date?)
-    {
+                status: Status
+    ) {
         self.jobId = jobId
         self.jobName = jobName
         self.payload = payload
@@ -96,9 +110,10 @@ public struct QueueDatabaseEntryMigration: Migration {
             .field("maxRetryCount", .int, .required)
             .field("delayUntil", .datetime)
             .field("queuedAt", .datetime, .required)
-            .field("errorString", .string)
-            .field("status", .int8)
+            .field("dequeuedAt", .datetime)
             .field("completedAt", .datetime)
+            .field("errorString", .string)
+            .field("status", .int8, .required)
             .field("createdAt", .datetime)
             .field("updatedAt", .datetime)
             .create()

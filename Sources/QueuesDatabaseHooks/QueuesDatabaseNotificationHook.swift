@@ -27,7 +27,6 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
         self.closure = closure
     }
 
-
     /// Called when the job is first dispatched
     /// - Parameters:
     ///   - job: The `JobData` associated with the job
@@ -39,11 +38,24 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
                            maxRetryCount: job.maxRetryCount,
                            delayUntil: job.delayUntil,
                            queuedAt: job.queuedAt,
+                           dequeuedAt: nil,
+                           completedAt: nil,
                            errorString: nil,
-                           status: .dispatched,
-                           completedAt: nil).save(on: database)
+                           status: .queued).save(on: database)
     }
 
+    /// Called when the job is dequeued
+    /// - Parameters:
+    ///   - jobId: The id of the Job
+    ///   - eventLoop: The eventLoop
+    public func dequeued(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        QueueDatabaseEntry
+            .query(on: database)
+            .filter(\.$jobId == jobId)
+            .set(\.$status, to: .running)
+            .set(\.$dequeuedAt, to: Date())
+            .update()
+    }
 
     /// Called when the job succeeds
     /// - Parameters:
