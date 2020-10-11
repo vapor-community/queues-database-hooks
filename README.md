@@ -19,12 +19,15 @@ app.queues.add(QueuesDatabaseNotificationHook.default(db: app.db))
 And that's all! Your app will now start tracking job data in your specified database.
 
 ## Configuring the error handler
-By default, the package will attempt to transform `Error`s into `String`s via the `localizedDescription` property. You can pass in a closure when initializing the `QueuesDatabaseNotificationHook` object to specify how to transform errors:
+By default, the package will attempt to transform `Error`s into `String`s via the `localizedDescription` property. You can pass in a closure when initializing the `QueuesDatabaseNotificationHook` object to specify how to transform errors. You can also pass in a closure for transforming the notification data (if, for example, you only want to save the payload data for certain job names.)
 
 ```swift
-app.queues.add(QueuesDatabaseNotificationHook(db: app.db) { error in
-  // Do something here with `error` that returns a string
-})
+let dbHook = QueuesDatabaseNotificationHook(db: db) { error -> (String) in
+    // Do something here with `error` that returns a string
+} payloadClosure: { data -> (NotificationJobData) in
+    return data
+}
+app.queues.add(dbHook)
 ```
 
 ## What can I do with this data?

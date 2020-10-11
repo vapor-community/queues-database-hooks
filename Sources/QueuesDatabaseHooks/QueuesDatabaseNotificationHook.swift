@@ -5,7 +5,10 @@ import FluentKit
 /// A `NotificationHook` that can be added to the queues package to track the status of all successful and failed jobs
 public struct QueuesDatabaseNotificationHook: NotificationHook {
     /// Error-transformation closure.
-    private let closure: (Error) -> (String)
+    private let errorClosure: (Error) -> (String)
+
+    /// Payload-transformation closure.
+    private let payloadClosure: (NotificationJobData) -> (NotificationJobData)
 
     /// The database to run the queries on
     public let database: Database
@@ -13,8 +16,10 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
     /// Creates a default `QueuesDatabaseNotificationHook`
     /// - Returns: A `QueuesDatabaseNotificationHook` notification hook handler
     public static func `default`(db: Database) -> QueuesDatabaseNotificationHook {
-        return .init(db: db) { error -> String in
+        return .init(db: db) { error -> (String) in
             return error.localizedDescription
+        } payloadClosure: { data -> (NotificationJobData) in
+            return data
         }
     }
 
@@ -22,9 +27,10 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
     ///
     /// - parameters:
     ///     - closure: Error-transformation closure. Converts `Error` to `String`.
-    public init(db: Database, _ closure: @escaping (Error) -> (String)) {
+    public init(db: Database, errorClosure: @escaping (Error) -> (String), payloadClosure: @escaping (NotificationJobData) -> (NotificationJobData)) {
         self.database = db
-        self.closure = closure
+        self.errorClosure = errorClosure
+        self.payloadClosure = payloadClosure
     }
 
     /// Called when the job is first dispatched
@@ -32,17 +38,18 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
     ///   - job: The `JobData` associated with the job
     ///   - eventLoop: The eventLoop
     public func dispatched(job: NotificationJobData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        QueueDatabaseEntry(jobId: job.id,
-                           jobName: job.jobName,
-                           queueName: job.queueName,
-                           payload: Data(job.payload),
-                           maxRetryCount: job.maxRetryCount,
-                           delayUntil: job.delayUntil,
-                           queuedAt: job.queuedAt,
-                           dequeuedAt: nil,
-                           completedAt: nil,
-                           errorString: nil,
-                           status: .queued).save(on: database)
+        let data = payloadClosure(job)
+        return QueueDatabaseEntry(jobId: data.id,
+                                  jobName: data.jobName,
+                                  queueName: data.queueName,
+                                  payload: Data(data.payload),
+                                  maxRetryCount: data.maxRetryCount,
+                                  delayUntil: data.delayUntil,
+                                  queuedAt: data.queuedAt,
+                                  dequeuedAt: nil,
+                                  completedAt: nil,
+                                  errorString: nil,
+                                  status: .queued).save(on: database)
     }
 
     /// Called when the job is dequeued
@@ -81,7 +88,7 @@ public struct QueuesDatabaseNotificationHook: NotificationHook {
             .query(on: database)
             .filter(\.$jobId == jobId)
             .set(\.$status, to: .error)
-            .set(\.$errorString, to: closure(error))
+            .set(\.$errorString, to: errorClosure(error))
             .set(\.$completedAt, to: Date())
             .update()
     }
