@@ -39,7 +39,7 @@ public struct QueuesDatabaseNotificationHook: JobEventDelegate {
     ///   - eventLoop: The eventLoop
     public func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         let data = payloadClosure(job)
-        return QueueDatabaseEntry(jobId: data.id,
+        let model = QueueDatabaseEntry(jobId: data.id,
                                   jobName: data.jobName,
                                   queueName: data.queueName,
                                   payload: Data(data.payload),
@@ -49,7 +49,11 @@ public struct QueuesDatabaseNotificationHook: JobEventDelegate {
                                   dequeuedAt: nil,
                                   completedAt: nil,
                                   errorString: nil,
-                                  status: .queued).save(on: database)
+                                  status: .queued)
+        
+        return model.save(on: database).map { _ in
+            self.database.logger.info("\(job.id) - Added route to database, db ID \(model.id?.uuidString ?? "")")
+        }
     }
 
     /// Called when the job is dequeued
@@ -57,12 +61,15 @@ public struct QueuesDatabaseNotificationHook: JobEventDelegate {
     ///   - jobId: The id of the Job
     ///   - eventLoop: The eventLoop
     public func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        QueueDatabaseEntry
+        self.database.logger.info("\(jobId) - Updating to status of running")
+        return QueueDatabaseEntry
             .query(on: database)
             .filter(\.$jobId == jobId)
             .set(\.$status, to: .running)
             .set(\.$dequeuedAt, to: Date())
-            .update()
+            .update().map { _ in
+                self.database.logger.info("\(jobId) - Done updating to status of running")
+            }
     }
 
     /// Called when the job succeeds
@@ -70,12 +77,16 @@ public struct QueuesDatabaseNotificationHook: JobEventDelegate {
     ///   - jobId: The id of the Job
     ///   - eventLoop: The eventLoop
     public func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        QueueDatabaseEntry
+        self.database.logger.info("\(jobId) - Updating to status of success")
+        
+        return QueueDatabaseEntry
             .query(on: database)
             .filter(\.$jobId == jobId)
             .set(\.$status, to: .success)
             .set(\.$completedAt, to: Date())
-            .update()
+            .update().map { _ in
+                self.database.logger.info("\(jobId) - Done updating to status of success")
+            }
     }
 
     /// Called when the job returns an error
@@ -84,12 +95,16 @@ public struct QueuesDatabaseNotificationHook: JobEventDelegate {
     ///   - error: The error that caused the job to fail
     ///   - eventLoop: The eventLoop
     public func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
-        QueueDatabaseEntry
+        self.database.logger.info("\(jobId) - Updating to status of error")
+        
+        return QueueDatabaseEntry
             .query(on: database)
             .filter(\.$jobId == jobId)
             .set(\.$status, to: .error)
             .set(\.$errorString, to: errorClosure(error))
             .set(\.$completedAt, to: Date())
-            .update()
+            .update().map { _ in
+                self.database.logger.info("\(jobId) - Done updating to status of error")
+            }
     }
 }
