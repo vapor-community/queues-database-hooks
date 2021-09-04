@@ -57,7 +57,7 @@ public extension QueueDatabaseEntry {
                     1
                 ELSE
                     0
-                END) / count(*), 1) as "percentSuccess"
+                END) / count(*), 1)::FLOAT as "percentSuccess"
         FROM
             _queue_job_completions
         WHERE
