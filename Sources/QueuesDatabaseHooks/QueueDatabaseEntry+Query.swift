@@ -16,7 +16,7 @@ public extension QueueDatabaseEntry {
             COALESCE(
                 SUM(
                     CASE status
-                    WHEN 0 THEN
+                    WHEN 0::char THEN
                         1
                     ELSE
                         0
@@ -26,7 +26,7 @@ public extension QueueDatabaseEntry {
             COALESCE(
                 SUM(
                     CASE status
-                    WHEN 1 THEN
+                    WHEN 1::char THEN
                         1
                     ELSE
                         0
@@ -53,7 +53,7 @@ public extension QueueDatabaseEntry {
             COUNT(*) as "completedJobs",
             COALESCE(SUM(
                 CASE status
-                WHEN 2 THEN
+                WHEN 2::char THEN
                     1
                 ELSE
                     0
@@ -61,8 +61,8 @@ public extension QueueDatabaseEntry {
         FROM
             _queue_job_completions
         WHERE
-            completedAt IS NOT NULL
-            AND completedAt >= DATE_SUB(now(), interval \(raw: "\(hours)") hour)
+            "completedAt" IS NOT NULL
+            "completedAt" >= (NOW() - '\(raw: "\(hours)") HOURS'::INTERVAL)
         """
 
         return sqlDb.raw(query).first(decoding: CompletedJobStatusResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
@@ -91,9 +91,9 @@ public extension QueueDatabaseEntry {
         FROM
             _queue_job_completions
         WHERE
-            completedAt IS NOT NULL
-            AND dequeuedAt is not null
-            AND completedAt >= DATE_SUB(now(), interval \(raw: "\(hours)") hour)
+            "completedAt" IS NOT NULL
+            AND "dequeuedAt" is not null
+            AND "completedAt" >= (NOW() - '\(raw: "\(hours)") HOURS'::INTERVAL)
             \(jobFilterString)
         """
 
