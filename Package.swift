@@ -13,15 +13,15 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/queues.git", from: "1.5.0"),
-        .package(url: "https://github.com/vapor/fluent-kit.git", from: "1.7.0"),
-        .package(url: "https://github.com/vapor/sql-kit.git", from: "3.7.0")
+        .package(url: "https://github.com/vapor/fluent.git", from: "4.0.0"),
+        .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.0.0")
     ],
     targets: [
         .target(
             name: "QueuesDatabaseHooks",
             dependencies: [
-                .product(name: "FluentKit", package: "fluent-kit"),
-                .product(name: "SQLKit", package: "sql-kit"),
+                .product(name: "Fluent", package: "fluent"),
+                .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
                 .product(name: "Queues", package: "queues")
             ]),
         .testTarget(
