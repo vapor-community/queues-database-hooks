@@ -86,8 +86,8 @@ public extension QueueDatabaseEntry {
 
         let query: SQLQueryString = """
         SELECT
-            avg(TIMESTAMPDIFF("second", "dequeuedAt", "completedAt")) as "avgRunTime",
-            avg(TIMESTAMPDIFF("second", "queuedAt", "dequeuedAt")) as "avgWaitTime"
+            avg(EXTRACT(EPOCH FROM ("dequeuedAt" - "completedAt"))) as "avgRunTime",
+            avg(EXTRACT(EPOCH FROM ("queuedAt" - "dequeuedAt"))) as "avgWaitTime"
         FROM
             _queue_job_completions
         WHERE
