@@ -62,7 +62,7 @@ public extension QueueDatabaseEntry {
             _queue_job_completions
         WHERE
             completedAt IS NOT NULL
-            completedAt >= (NOW() - '\(raw: "\(hours)") HOURS'::INTERVAL)
+            AND completedAt >= (NOW() - '\(raw: "\(hours)") HOURS'::INTERVAL)
         """
 
         return sqlDb.raw(query).first(decoding: CompletedJobStatusResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
