@@ -79,7 +79,7 @@ public extension QueueDatabaseEntry {
 
         let jobFilterString: SQLQueryString
         if let jobName = jobName {
-            jobFilterString = "AND jobName = \(raw: jobName)"
+            jobFilterString = "AND \"jobName\" = \(raw: jobName)"
         } else {
             jobFilterString = ""
         }
