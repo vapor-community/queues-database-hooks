@@ -62,7 +62,7 @@ public extension QueueDatabaseEntry {
             _queue_job_completions
         WHERE
             "completedAt" IS NOT NULL
-            AND "completedAt" >= (NOW() - '\(raw: "\(Double(hours))") HOURS'::INTERVAL)
+            AND "completedAt" >= (NOW() - '\(raw: "\(hours)") HOURS'::INTERVAL)
         """
 
         return sqlDb.raw(query).first(decoding: CompletedJobStatusResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
@@ -93,7 +93,7 @@ public extension QueueDatabaseEntry {
         WHERE
             "completedAt" IS NOT NULL
             AND "dequeuedAt" is not null
-            AND "completedAt" >= (NOW() - '\(raw: "\(Double(hours))") HOURS'::INTERVAL)
+            AND "completedAt" >= (NOW() - '\(raw: "\(hours)") HOURS'::INTERVAL)
             \(jobFilterString)
         """
 
