@@ -13,16 +13,12 @@ public extension QueueDatabaseEntry {
     static func getStatusOfCurrentJobs(db: Database) -> EventLoopFuture<CurrentJobsStatusResponse> {
         guard let sqlDb = db as? SQLDatabase else { return db.eventLoop.future(error: Abort(.badRequest, reason: "Only SQL Databases Supported")) }
 
-        //if sqlDb is PostgresDatabase {
-        let query: SQLQueryString!
-        if sqlDb is PostgresDatabase {
-            query = PostgresSqlQuery.getStatusOfCurrentJobsQuery()
-        } else if sqlDb is MySQLDatabase {
-            query = MySqlQuery.getStatusOfCurrentJobsQuery()
-        } else {
-            return db.eventLoop.future(error: Abort(.badRequest, reason: "Only Postgres or MySql Databases Supported"))
+        do {
+            let query = try QueryFactory.getStatusOfCurrentJobsQuery(db)
+            return sqlDb.raw(query).first(decoding: CurrentJobsStatusResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
+        } catch {
+            return sqlDb.eventLoop.future(error: Abort(.badRequest, reason: "Only Postgres or MySql Databases Supported"))
         }
-        return sqlDb.raw(query).first(decoding: CurrentJobsStatusResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
     }
 
     /// Retrieves data about jobs that ran successfully over the specified time period
@@ -33,15 +29,12 @@ public extension QueueDatabaseEntry {
     static func getCompletedJobsForTimePeriod(db: Database, hours: Int) -> EventLoopFuture<CompletedJobStatusResponse> {
         guard let sqlDb = db as? SQLDatabase else { return db.eventLoop.future(error: Abort(.badRequest, reason: "Only SQL Databases Supported")) }
 
-        let query: SQLQueryString!
-        if sqlDb is PostgresDatabase {
-            query = PostgresSqlQuery.getCompletedJobsForTimePeriodQuery(hours: hours)
-        } else if sqlDb is MySQLDatabase {
-            query = MySqlQuery.getCompletedJobsForTimePeriodQuery(hours: hours)
-        } else {
-            return db.eventLoop.future(error: Abort(.badRequest, reason: "Only Postgres or MySql Databases Supported"))
+        do {
+            let query = try QueryFactory.getCompletedJobsForTimePeriodQuery(db, hours: hours)
+            return sqlDb.raw(query).first(decoding: CompletedJobStatusResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
+        } catch {
+            return sqlDb.eventLoop.future(error: Abort(.badRequest, reason: "Only Postgres or MySql Databases Supported"))
         }
-        return sqlDb.raw(query).first(decoding: CompletedJobStatusResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
     }
 
     /// Retrieves data about the how quickly jobs ran and how long they waited to be run
@@ -53,14 +46,11 @@ public extension QueueDatabaseEntry {
     static func getTimingDataForJobs(db: Database, hours: Int, jobName: String? = nil) -> EventLoopFuture<JobsTimingResponse> {
         guard let sqlDb = db as? SQLDatabase else { return db.eventLoop.future(error: Abort(.badRequest, reason: "Only SQL Databases Supported")) }
 
-        let query: SQLQueryString!
-        if sqlDb is PostgresDatabase {
-            query = PostgresSqlQuery.getTimingDataForJobsQuery(hours: hours, jobName: jobName)
-        } else if sqlDb is MySQLDatabase {
-            query = MySqlQuery.getTimingDataForJobsQuery(hours: hours, jobName: jobName)
-        } else {
-            return db.eventLoop.future(error: Abort(.badRequest, reason: "Only Postgres or MySql Databases Supported"))
+        do {
+            let query = try QueryFactory.getTimingDataForJobsQuery(db, hours: hours, jobName: jobName)
+            return sqlDb.raw(query).first(decoding: JobsTimingResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
+        } catch {
+            return sqlDb.eventLoop.future(error: Abort(.badRequest, reason: "Only Postgres or MySql Databases Supported"))
         }
-        return sqlDb.raw(query).first(decoding: JobsTimingResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
     }
 }
