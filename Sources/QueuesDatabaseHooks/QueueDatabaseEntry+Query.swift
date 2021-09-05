@@ -1,5 +1,7 @@
 import Foundation
 import FluentKit
+import FluentMySQLDriver
+import FluentPostgresDriver
 import SQLKit
 import Vapor
 
@@ -11,32 +13,15 @@ public extension QueueDatabaseEntry {
     static func getStatusOfCurrentJobs(db: Database) -> EventLoopFuture<CurrentJobsStatusResponse> {
         guard let sqlDb = db as? SQLDatabase else { return db.eventLoop.future(error: Abort(.badRequest, reason: "Only SQL Databases Supported")) }
 
-        let query: SQLQueryString = """
-        SELECT
-            COALESCE(
-                SUM(
-                    CASE status
-                    WHEN 0::char THEN
-                        1
-                    ELSE
-                        0
-                    END
-                )
-            , 0) as "queuedCount",
-            COALESCE(
-                SUM(
-                    CASE status
-                    WHEN 1::char THEN
-                        1
-                    ELSE
-                        0
-                    END
-                )
-            , 0) as "runningCount"
-        FROM
-            _queue_job_completions
-        """
-
+        //if sqlDb is PostgresDatabase {
+        let query: SQLQueryString!
+        if sqlDb is PostgresDatabase {
+            query = PostgresSqlQuery.getStatusOfCurrentJobsQuery()
+        } else if sqlDb is MySQLDatabase {
+            query = MySqlQuery.getStatusOfCurrentJobsQuery()
+        } else {
+            return db.eventLoop.future(error: Abort(.badRequest, reason: "Only Postgres or MySql Databases Supported"))
+        }
         return sqlDb.raw(query).first(decoding: CurrentJobsStatusResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
     }
 
@@ -48,23 +33,14 @@ public extension QueueDatabaseEntry {
     static func getCompletedJobsForTimePeriod(db: Database, hours: Int) -> EventLoopFuture<CompletedJobStatusResponse> {
         guard let sqlDb = db as? SQLDatabase else { return db.eventLoop.future(error: Abort(.badRequest, reason: "Only SQL Databases Supported")) }
 
-        let query: SQLQueryString = """
-        SELECT
-            COUNT(*) as "completedJobs",
-            COALESCE(SUM(
-                CASE status
-                WHEN 2::char THEN
-                    1
-                ELSE
-                    0
-                END) / count(*), 1)::FLOAT as "percentSuccess"
-        FROM
-            _queue_job_completions
-        WHERE
-            "completedAt" IS NOT NULL
-            AND "completedAt" >= (NOW() - '\(raw: "\(hours)") HOURS'::INTERVAL)
-        """
-
+        let query: SQLQueryString!
+        if sqlDb is PostgresDatabase {
+            query = PostgresSqlQuery.getCompletedJobsForTimePeriodQuery(hours: hours)
+        } else if sqlDb is MySQLDatabase {
+            query = MySqlQuery.getCompletedJobsForTimePeriodQuery(hours: hours)
+        } else {
+            return db.eventLoop.future(error: Abort(.badRequest, reason: "Only Postgres or MySql Databases Supported"))
+        }
         return sqlDb.raw(query).first(decoding: CompletedJobStatusResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
     }
 
@@ -77,54 +53,14 @@ public extension QueueDatabaseEntry {
     static func getTimingDataForJobs(db: Database, hours: Int, jobName: String? = nil) -> EventLoopFuture<JobsTimingResponse> {
         guard let sqlDb = db as? SQLDatabase else { return db.eventLoop.future(error: Abort(.badRequest, reason: "Only SQL Databases Supported")) }
 
-        let jobFilterString: SQLQueryString
-        if let jobName = jobName {
-            jobFilterString = "AND \"jobName\" = \(raw: jobName)"
+        let query: SQLQueryString!
+        if sqlDb is PostgresDatabase {
+            query = PostgresSqlQuery.getTimingDataForJobsQuery(hours: hours, jobName: jobName)
+        } else if sqlDb is MySQLDatabase {
+            query = MySqlQuery.getTimingDataForJobsQuery(hours: hours, jobName: jobName)
         } else {
-            jobFilterString = ""
+            return db.eventLoop.future(error: Abort(.badRequest, reason: "Only Postgres or MySql Databases Supported"))
         }
-
-        let query: SQLQueryString = """
-        SELECT
-            avg(EXTRACT(EPOCH FROM ("dequeuedAt" - "completedAt"))) as "avgRunTime",
-            avg(EXTRACT(EPOCH FROM ("queuedAt" - "dequeuedAt"))) as "avgWaitTime"
-        FROM
-            _queue_job_completions
-        WHERE
-            "completedAt" IS NOT NULL
-            AND "dequeuedAt" is not null
-            AND "completedAt" >= (NOW() - '\(raw: "\(hours)") HOURS'::INTERVAL)
-            \(jobFilterString)
-        """
-
         return sqlDb.raw(query).first(decoding: JobsTimingResponse.self).unwrap(or: Abort(.badRequest, reason: "Could not get data for status"))
     }
-}
-
-/// Data about jobs currently queued or running
-public struct CurrentJobsStatusResponse: Content {
-    /// The number of queueud jobs currently waiting to be run
-    public let queuedCount: Int
-
-    /// The number of jobs currently running
-    public let runningCount: Int
-}
-
-/// Data about jobs that have run successfully over a time period
-public struct CompletedJobStatusResponse: Content {
-    /// The number of jobs that completed successfully
-    public let completedJobs: Int
-
-    /// The percent of jobs (out of all jobs run in the time period) that ran successfully
-    public let percentSuccess: Double
-}
-
-/// Data about how long jobs are taking to run
-public struct JobsTimingResponse: Content {
-
-    /// The average time spent running a job
-    public let avgRunTime: Double?
-
-    /// The average time jobs spent waiting to be processed
-    public let avgWaitTime: Double?
 }
