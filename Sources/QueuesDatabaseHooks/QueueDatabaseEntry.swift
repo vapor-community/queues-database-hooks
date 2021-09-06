@@ -77,17 +77,18 @@ public final class QueueDatabaseEntry: Model {
 
     public init() { }
 
-    public init(jobId: String,
-                jobName: String,
-                queueName: String,
-                payload: Data,
-                maxRetryCount: Int,
-                delayUntil: Date?,
-                queuedAt: Date,
-                dequeuedAt: Date?,
-                completedAt: Date?,
-                errorString: String?,
-                status: Status
+    public init(
+        jobId: String,
+        jobName: String,
+        queueName: String,
+        payload: Data,
+        maxRetryCount: Int,
+        delayUntil: Date?,
+        queuedAt: Date,
+        dequeuedAt: Date?,
+        completedAt: Date?,
+        errorString: String?,
+        status: Status
     ) {
         self.jobId = jobId
         self.jobName = jobName
@@ -113,7 +114,7 @@ public struct QueueDatabaseEntryMigration: Migration {
             .field("jobId", .string, .required)
             .field("jobName", .string, .required)
             .field("queueName", .string, .required)
-            .field("payload", .json, .required)
+            .field("payload", .data, .required)
             .field("maxRetryCount", .int, .required)
             .field("delayUntil", .datetime)
             .field("queuedAt", .datetime, .required)
