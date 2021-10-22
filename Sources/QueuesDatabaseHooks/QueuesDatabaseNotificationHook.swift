@@ -4,13 +4,13 @@ import FluentKit
 
 /// A `NotificationHook` that can be added to the queues package to track the status of all successful and failed jobs
 public struct QueuesDatabaseNotificationHook: JobEventDelegate {
-    /// Error-transformation closure.
+    /// Transforms an `Error` to a `String` to store in the database for a failing job.
     private let errorClosure: (Error) -> (String)
 
-    /// Payload-transformation closure.
+    /// A hook which allows modifying (such as redacting) the payload stored in the database for a dispatched job.
     private let payloadClosure: (JobEventData) -> (JobEventData)
 
-    /// The database to run the queries on
+    /// The database in which job information is stored.
     public let database: Database
 
     /// Creates a default `QueuesDatabaseNotificationHook`
@@ -25,34 +25,34 @@ public struct QueuesDatabaseNotificationHook: JobEventDelegate {
 
     /// Create a new `QueuesNotificationHook`.
     ///
-    /// - parameters:
-    ///     - closure: Error-transformation closure. Converts `Error` to `String`.
+    /// - Parameters:
+    ///  - db: The database in which job information should be stored.
+    ///  - errorClosure: A closure to turn an `Error` into a `String` that is stored in the database for a failed job.
+    ///  - payloadClosure: A closure which allows editing or removing the job payload which is saved to the database.
     public init(db: Database, errorClosure: @escaping (Error) -> (String), payloadClosure: @escaping (JobEventData) -> (JobEventData)) {
         self.database = db
         self.errorClosure = errorClosure
         self.payloadClosure = payloadClosure
     }
 
-    /// Called when the job is first dispatched
+    /// Called when the job is first dispatched to a queue.
     /// - Parameters:
-    ///   - job: The `JobData` associated with the job
-    ///   - eventLoop: The eventLoop
+    ///   - job: The `JobEventData` associated with the job.
+    ///   - eventLoop: The `EventLoop` of the queue the job was dispatched to.
     public func dispatched(job: JobEventData, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         let data = payloadClosure(job)
-        let model = QueueDatabaseEntry(jobId: data.id,
-                                  jobName: data.jobName,
-                                  queueName: data.queueName,
-                                  payload: Data(data.payload),
-                                  maxRetryCount: data.maxRetryCount,
-                                  delayUntil: data.delayUntil,
-                                  queuedAt: data.queuedAt,
-                                  dequeuedAt: nil,
-                                  completedAt: nil,
-                                  errorString: nil,
-                                  status: .queued)
         
-        return model.save(on: database).map { _ in
-            self.database.logger.info("\(job.id) - Added route to database, db ID \(model.id?.uuidString ?? "")")
+        return QueueDatabaseEntry.recordDispatch(
+            jobId: data.id,
+            jobName: data.jobName,
+            queueName: data.queueName,
+            payload: Data(data.payload),
+            maxRetryCount: data.maxRetryCount,
+            delayUntil: data.delayUntil,
+            dispatchTimestamp: data.queuedAt,
+            on: self.database
+        ).map {
+            self.database.logger.info("\(job.id) - Added route to database")
         }
     }
 
@@ -62,14 +62,14 @@ public struct QueuesDatabaseNotificationHook: JobEventDelegate {
     ///   - eventLoop: The eventLoop
     public func didDequeue(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         self.database.logger.info("\(jobId) - Updating to status of running")
-        return QueueDatabaseEntry
-            .query(on: database)
-            .filter(\.$jobId == jobId)
-            .set(\.$status, to: .running)
-            .set(\.$dequeuedAt, to: Date())
-            .update().map { _ in
-                self.database.logger.info("\(jobId) - Done updating to status of running")
-            }
+        
+        return QueueDatabaseEntry.recordDequeue(
+            jobId: jobId,
+            dequeueTimestamp: Date(),
+            on: self.database
+        ).map {
+            self.database.logger.info("\(jobId) - Done updating to status of running")
+        }
     }
 
     /// Called when the job succeeds
@@ -79,14 +79,14 @@ public struct QueuesDatabaseNotificationHook: JobEventDelegate {
     public func success(jobId: String, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         self.database.logger.info("\(jobId) - Updating to status of success")
         
-        return QueueDatabaseEntry
-            .query(on: database)
-            .filter(\.$jobId == jobId)
-            .set(\.$status, to: .success)
-            .set(\.$completedAt, to: Date())
-            .update().map { _ in
-                self.database.logger.info("\(jobId) - Done updating to status of success")
-            }
+        return QueueDatabaseEntry.recordCompletion(
+            jobId: jobId,
+            completionTimestamp: Date(),
+            errorString: nil,
+            on: self.database
+        ).map {
+            self.database.logger.info("\(jobId) - Done updating to status of success")
+        }
     }
 
     /// Called when the job returns an error
@@ -97,14 +97,13 @@ public struct QueuesDatabaseNotificationHook: JobEventDelegate {
     public func error(jobId: String, error: Error, eventLoop: EventLoop) -> EventLoopFuture<Void> {
         self.database.logger.info("\(jobId) - Updating to status of error")
         
-        return QueueDatabaseEntry
-            .query(on: database)
-            .filter(\.$jobId == jobId)
-            .set(\.$status, to: .error)
-            .set(\.$errorString, to: errorClosure(error))
-            .set(\.$completedAt, to: Date())
-            .update().map { _ in
-                self.database.logger.info("\(jobId) - Done updating to status of error")
-            }
+        return QueueDatabaseEntry.recordCompletion(
+            jobId: jobId,
+            completionTimestamp: Date(),
+            errorString: errorClosure(error),
+            on: self.database
+        ).map {
+            self.database.logger.info("\(jobId) - Done updating to status of error")
+        }
     }
 }
