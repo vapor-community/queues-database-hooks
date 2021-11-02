@@ -3,16 +3,15 @@ import Queues
 import XCTQueues
 import XCTVapor
 import Fluent
-import FluentSQLiteDriver
 import FluentPostgresDriver
 import XCTest
 
-final class QueuesDatabaseHooksTests: XCTestCase {
+final class PostgresDatabaseHooksTests: XCTestCase {
     var app: Application!
     
     override func setUpWithError() throws {
         self.app = Application(.testing)
-        self.app.databases.use(.sqlite(.memory, maxConnectionsPerEventLoop: 1), as: .sqlite)
+        self.app.databases.use(try .postgres(url: "postgresql://vapor_username:vapor_password@127.0.0.1:5432/vapor_database"), as: .psql)
         self.app.migrations.add(QueueDatabaseEntryMigration())
         try self.app.migrator.setupIfNeeded().wait()
         try self.app.migrator.prepareBatch().wait()
@@ -38,7 +37,7 @@ final class QueuesDatabaseHooksTests: XCTestCase {
         }
         
         self.app.queues.add(Foo())
-        self.app.get("foo") { $0.queue.dispatch(Foo.self, .init()).map { _ in "done" } }
+        self.app.get("foo") {$0.queue.dispatch(Foo.self, .init()).map { _ in "done" } }
         try app.testable().test(.GET, "/foo") { XCTAssertEqual($0.body.string, "done") }
         
         let entries1 = try QueueDatabaseEntry.query(on: self.app.db).all().wait()
